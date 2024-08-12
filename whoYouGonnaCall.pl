@@ -1,6 +1,6 @@
 % Sabemos cuáles son las herramientas requeridas para realizar una tarea de limpieza. 
 % Además, para las aspiradoras se indica cuál es la potencia mínima requerida para la tarea en cuestión.
-herramientasRequeridas(ordenarCuarto, [aspiradora(100), trapeador, plumero]).
+herramientasRequeridas(ordenarCuarto, [[aspiradora(100), escoba], trapeador, plumero]).
 herramientasRequeridas(limpiarTecho, [escoba, pala]).
 herramientasRequeridas(cortarPasto, [bordedadora]).
 herramientasRequeridas(limpiarBanio, [sopapa, trapeador]).
@@ -29,6 +29,10 @@ satisfaceNecesidad(Integrante, aspiradora(Potencia)):-
 satisfaceNecesidad(Integrante, Herramienta):-
     tiene(Integrante, Herramienta),
     Herramienta \= aspiradora(_).
+% Punto 6
+satisfaceNecesidad(Persona, ListaRemplazables):-
+	member(Herramienta, ListaRemplazables),
+	satisfaceNecesidad(Persona, Herramienta).
 
 % 3. Queremos saber si una persona puede realizar una tarea, que dependerá de las herramientas que tenga. Sabemos que:
 % - Quien tenga una varita de neutrones puede hacer cualquier tarea, independientemente de qué herramientas requiera dicha tarea.
@@ -49,11 +53,56 @@ puedeRealizarTarea(Persona, Tarea):-
 % Entonces lo que se le cobraría al cliente sería la suma del valor a cobrar por cada tarea,
 % multiplicando el precio por los metros cuadrados de la tarea.
 
+realizarPresupuesto(Cliente, Presupuesto):-
+    tareaPedida(Cliente, _, _),
+    findall(Precio, (tareaPedida(Cliente, Tarea, Metros), calcularPrecioTarea(Tarea, Metros, Precio)), Precios),
+    sumlist(Precios, Presupuesto).
+
+calcularPrecioTarea(Tarea, Metros, Precio):-
+    precio(Tarea, PrecioTarea),
+    Precio is (Metros * PrecioTarea).
+% tareaPedida(Cliente, Tarea, MetrosCuadrados)
+tareaPedida(pepito, ordenarCuarto, 20).
+tareaPedida(pepito, limpiarBanio, 15).
+tareaPedida(fulanito, encerarPisos, 25).
+tareaPedida(fulanito, cortarPasto, 50).
+tareaPedida(menganito, limpiarTecho, 10).
+tareaPedida(carlitos, limpiarBanio, 40).
+% precio(Tarea, PrecioPorMetroCuadrado) 
+precio(ordenarCuarto, 20).
+precio(limpiarBanio, 70).
+precio(encerarPisos, 50).
+precio(cortarPasto, 40).
+precio(limpiarTecho, 35).
+
 % 5. Finalmente necesitamos saber quiénes aceptarían el pedido de un cliente. Un
 % integrante acepta el pedido cuando puede realizar todas las tareas del pedido y además está dispuesto a aceptarlo.
 % Sabemos que Ray sólo acepta pedidos que no incluyan limpiar techos, Winston sólo acepta pedidos que paguen más de $500, Egon está dispuesto a aceptar 
 % pedidos que no tengan tareas complejas y Peter está dispuesto a aceptar cualquier pedido.
 % Decimos que una tarea es compleja si requiere más de dos herramientas. Además la limpieza de techos siempre es compleja.
+aceptaPedidoDe(Integrante, Cliente):-
+    puedeRealizarTodasLasTareas(Integrante, Cliente),
+    estaDispuesto(Integrante, Cliente).
+
+puedeRealizarTodasLasTareas(Integrante, Cliente):-
+    tiene(Integrante, _),
+    tareaPedida(Cliente, _, _),
+    forall(tareaPedida(Cliente, Tarea, _), puedeRealizarTarea(Integrante, Tarea)).
+
+estaDispuesto(ray, Cliente):-
+    forall(tareaPedida(Cliente, Tarea, _), Tarea \= limpiarTecho).
+estaDispuesto(winston, Cliente):-
+    realizarPresupuesto(Cliente, Presupuesto),
+    Presupuesto > 500.
+estaDispuesto(egon, Cliente):-
+    forall(tareaPedida(Cliente, Tarea, _), not(esCompleja(Tarea))).
+estaDispuesto(peter, _).
+
+esCompleja(Tarea):-
+    herramientasRequeridas(Tarea, Herramientas),
+    length(Herramientas, Cantidad),
+    Cantidad > 2.
+esCompleja(limpiarTecho).
 
 % 6. Necesitamos agregar la posibilidad de tener herramientas reemplazables, que incluyan 2 herramientas de las que pueden tener los integrantes como 
 % alternativas, para que puedan usarse como un requerimiento para poder llevar a cabo una tarea.
